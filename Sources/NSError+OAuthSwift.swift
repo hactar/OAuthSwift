@@ -23,6 +23,10 @@ public extension NSError {
             return false
         }
 		if self.code == 401 {
+            // The City of Vienna does not add any additional info. 401 means the token expired, all additional
+            // checks disabled.
+            return true
+            /*
 			if let reponseHeaders = self.userInfo["Response-Headers"] as? [String: String],
 				let authenticateHeader = reponseHeaders["WWW-Authenticate"] ?? reponseHeaders["Www-Authenticate"] {
 				let headerDictionary = authenticateHeader.headerDictionary
@@ -49,7 +53,8 @@ public extension NSError {
                     }
                 }
             }
-		}
+             */
+		} // end of 401
 
         // Detect access token expiration errors from facebook
         // Docu: https://developers.facebook.com/docs/graph-api/using-graph-api#errors

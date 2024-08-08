@@ -36,6 +36,10 @@ open class OAuth2Swift: OAuthSwift {
     var customKeypath: String?
     /// if exists, will be send into the 'refresh-token' request
     var customAccessTokenParams: Dictionary<String,String>? = nil
+    
+    /// If a broken endpoint returns 401 then startAuthorizedRequest will loop for ever or until too many requests is returned. Lets ensure we only try once
+    
+    var renewedTokenForEndpointAlready: Set<URL> = Set()
 
     // MARK: init
     public init(consumerKey: String, consumerSecret: String, authorizeUrl: URLConvertible, accessTokenUrl: URLConvertible? = nil, responseType: String, contentType: String? = nil, customKeypath: String? = nil, customAccessTokenParams: Dictionary<String,String>? = nil) {
@@ -281,7 +285,11 @@ open class OAuth2Swift: OAuthSwift {
         OAuthSwift.log?.trace("Start authorized request, url: \(url.url?.absoluteString ?? "unknown") ...")
         let completionHandler: OAuthSwiftHTTPRequest.CompletionHandler = { result in
             switch result {
+                
             case .success:
+                if let myURL = url.url {
+                    self.renewedTokenForEndpointAlready.remove(myURL)
+                }
                 completion(result)
             case .failure(let error): // map/recovery error
                 switch error {
@@ -300,11 +308,21 @@ open class OAuth2Swift: OAuthSwift {
                             // Reauthorize the request again, this time with a brand new access token ready to be used.
                             _ = self.startAuthorizedRequest(url, method: method, parameters: parameters, headers: headers, body: body, onTokenRenewal: onTokenRenewal, completionHandler: completion)
                         case .failure(let error):
-                            completion(.failure(error))
+                            completion(.failure(OAuthSwiftError.newAccessTokenViaRefreshTokenFailed(error: error)))
                         }
                     }
 
-                    _ = self.renewAccessToken(withRefreshToken: self.client.credential.oauthRefreshToken, headers: renewHeaders ?? headers, completionHandler: renewCompletionHandler)
+                    if let myURL = url.url {
+                        if self.renewedTokenForEndpointAlready.contains(myURL) {
+                            completion(.failure(OAuthSwiftError.newAccessTokenViaRefreshTokenFailed(error: error)))
+                            return
+                        } else {
+                            self.renewedTokenForEndpointAlready.insert(myURL)
+                        }
+                        
+                    }
+                    
+                    _ = self.renewAccessToken(withRefreshToken: self.client.credential.oauthRefreshToken, headers: renewHeaders, completionHandler: renewCompletionHandler)
                 default:
                     completion(.failure(error))
                 }
@@ -312,7 +330,7 @@ open class OAuth2Swift: OAuthSwift {
         }
 
         // build request
-        return self.client.request(url, method: method, parameters: parameters, headers: headers, body: body, completionHandler: completionHandler)
+        return self.client.request(url, method: method, parameters: parameters, headers: headers, body: body, checkTokenExpiration: false, completionHandler: completionHandler)
     }
 
     // OAuth 2.0 Specification: https://tools.ietf.org/html/draft-ietf-oauth-v2-13#section-4.3

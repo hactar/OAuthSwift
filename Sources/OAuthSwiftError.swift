@@ -40,6 +40,8 @@ public enum OAuthSwiftError: Error {
     case slowDown(error: Error, request: URLRequest)
     /// If the user denies the request.
     case accessDenied(error: Error, request: URLRequest)
+    ///  getting new access token via refresh token failed
+    case newAccessTokenViaRefreshTokenFailed(error: Error)
 
     public static let Domain = "OAuthSwiftError"
     public static let ResponseDataKey = "OAuthSwiftError.response.data"
@@ -60,6 +62,7 @@ public enum OAuthSwiftError: Error {
         case cancelled = -12
         case slowDown = -13
         case accessDenied = -14
+        case newAccessTokenViaRefreshTokenFailed = -15
     }
 
     fileprivate var code: Code {
@@ -78,6 +81,8 @@ public enum OAuthSwiftError: Error {
         case .authorizationPending: return Code.authorizationPending
         case .slowDown: return Code.slowDown
         case .accessDenied: return Code.accessDenied
+        case .newAccessTokenViaRefreshTokenFailed:
+            return .newAccessTokenViaRefreshTokenFailed
         }
     }
 
@@ -121,6 +126,8 @@ extension OAuthSwiftError: CustomStringConvertible {
         case .accessDenied : return "accessDenied"
         case .authorizationPending: return "authorizationPending"
         case .cancelled : return "cancelled"
+        case .newAccessTokenViaRefreshTokenFailed(error: let error):
+           return "newAccessTokenViaRefreshTokenFailed underlyingError: \(error)"
         }
     }
 }

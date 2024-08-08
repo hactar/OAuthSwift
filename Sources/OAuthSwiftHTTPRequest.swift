@@ -121,6 +121,9 @@ open class OAuthSwiftHTTPRequest: NSObject, OAuthSwiftRequestHandle {
             return
         }
 
+
+
+
         // MARK: failure no response or data returned by server
         guard let response = resp as? HTTPURLResponse, let responseData = data else {
             let badRequestCode = 400
@@ -136,6 +139,12 @@ open class OAuthSwiftHTTPRequest: NSObject, OAuthSwiftRequestHandle {
             }
             let error = NSError(domain: OAuthSwiftError.Domain, code: badRequestCode, userInfo: userInfo)
             completion?(.failure(.requestError(error: error, request: request)))
+            return
+        }
+
+        // City of Vienna responds with 918 as error code for unauthorized too
+        guard response.statusCode != 918 else {
+            completion?(.failure(.tokenExpired(error: nil)))
             return
         }
 
